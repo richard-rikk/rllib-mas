@@ -79,7 +79,7 @@ def Training(
         if episode_reward_mean[-1] > max_mean_score:
             max_mean_score = episode_reward_mean[-1]
 
-        print(f"Epoch finished: {i+1} -- Mean reward: {episode_reward_mean[-1]} -- Max mean: {max_mean_score}")
+        print(f"Epoch finished: {i+1} -- Mean reward: {episode_reward_mean[-1]:.2f} -- Max mean: {max_mean_score:.2f}")
 
     model.save(checkpoint_dir=save_dir)
     Plot(eps_len_mean=episode_len_mean, eps_reward_mean=episode_reward_mean, eps_reward_max=episode_reward_max)
