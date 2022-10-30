@@ -33,9 +33,15 @@ class Simulation(gym.Env):
         - width:int
         The width of the map.
         
-        - encoding:Tuple[int,int,int,int,int]
-        Contains the cell encodings for the map. In order these
-        are: `empty`, `agent`, `object`, `obstacle`, `target`. 
+        - config:Dict[str,Any]
+        It is the configuration settings for the class. 
+        It has to cointain the following keys:
+            1. height:int - The map height.
+            1. width:int - The map width.
+            1. obj_cnt:int - The number of objects on the map.
+            1. obst_cnt:int - The number of obstacles on the map.
+            1. tar_cnt:int - The number of targets on the map.
+            1. max_step:int - The number of allowed steps per game.
 
         # Returns
         - None
@@ -59,7 +65,7 @@ class Simulation(gym.Env):
         self.obs_cnt         = config["obst_cnt"]
         self.tar_cnt         = config["tar_cnt"]
         self.step_cnt        = 0
-        self.max_step        = 500
+        self.max_step        = config["max_step"]
     
         # Check exceptions (+1 is the agent)
         if (all_obj := self.obj_cnt + self.obs_cnt + self.tar_cnt + 1) > self.height*self.width:

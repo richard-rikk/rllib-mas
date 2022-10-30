@@ -6,7 +6,7 @@ from simulation           import Simulation
 from utils                import Plot
 
 def Training(
-    epochs:int, num_workers:int, gpus:int, buffer_size:int,
+    epochs:int, num_workers:int, gpus:int, buffer_size:int, max_step:int,
     sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int  
     ) -> None:
     """
@@ -24,6 +24,9 @@ def Training(
 
     -buffer_size:int
     The size of the replay buffer.
+
+    -max_step:int
+    The number of steps allowed per game.
 
     -sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int 
     The settings for the simulation. In order it is the
@@ -53,6 +56,7 @@ def Training(
             "obj_cnt":sim_objs,
             "obst_cnt":sim_obs,
             "tar_cnt":sim_tars,
+            "max_step":max_step,
             }
         )
     config.num_workers = num_workers

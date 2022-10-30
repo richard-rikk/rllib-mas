@@ -12,7 +12,8 @@ Training(
     sim_width=10,
     sim_objs=10,
     sim_obs=10,
-    sim_tars=10
+    sim_tars=10,
+    max_step=200,
 )
 
 
