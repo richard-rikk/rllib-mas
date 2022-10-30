@@ -6,6 +6,7 @@ from utils      import Plot
 Training(
     epochs=2,
     num_workers=4,
+    buffer_size=1024,
     gpus=0,
     sim_height=10,
     sim_width=10,

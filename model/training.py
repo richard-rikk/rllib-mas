@@ -6,7 +6,7 @@ from simulation           import Simulation
 from utils                import Plot
 
 def Training(
-    epochs:int, num_workers:int, gpus:int,
+    epochs:int, num_workers:int, gpus:int, buffer_size:int,
     sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int  
     ) -> None:
     """
@@ -22,6 +22,9 @@ def Training(
     -gpus:int
     The number of GPUs to use.
 
+    -buffer_size:int
+    The size of the replay buffer.
+
     -sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int 
     The settings for the simulation. In order it is the
     height and width of the map, the number of objects,
@@ -32,10 +35,13 @@ def Training(
 
     # Set the config.
     config = apex_dqn.ApexDQNConfig()
+    replay_config = config.replay_buffer_config.update({"capacity": buffer_size, "learning_starts":buffer_size})
+
     config.training(
         num_atoms=2, v_min=0., v_max=10.,
         noisy=True, dueling=True, hiddens=[128,128],
-        double_q=True, n_step=5
+        double_q=True, n_step=5, 
+        replay_buffer_config=replay_config
     )
     config.resources(num_gpus=gpus)
     config.framework(framework="torch")
