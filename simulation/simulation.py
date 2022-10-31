@@ -1,6 +1,8 @@
+from turtle import width
 import gym
 import numpy as np
 
+from .observation import MultiDiscreteMap
 from typing import Tuple, Union, Dict, Any
 
 class Simulation(gym.Env):
@@ -66,59 +68,19 @@ class Simulation(gym.Env):
         self.tar_cnt         = config["tar_cnt"]
         self.step_cnt        = 0
         self.max_step        = config["max_step"]
-    
-        # Check exceptions (+1 is the agent)
-        if (all_obj := self.obj_cnt + self.obs_cnt + self.tar_cnt + 1) > self.height*self.width:
-            raise ValueError(f"Cannot place {all_obj} objects on {cells} many cells.")
 
         # Init the variables of the super class
-        self.observation_space= gym.spaces.Box(
-            np.zeros(shape=cells, dtype=np.uint8),
-            np.ones(shape=cells, dtype=np.uint8) * 4,
-            dtype=np.uint8,
+        self.observation_space = MultiDiscreteMap(
+            height=self.height,
+            width= self.width,
+            max_value=self.encode_target,
+            obj_cnt=self.obj_cnt, obs_cnt=self.obs_cnt,tar_cnt=self.tar_cnt,
+            encoding=(self.encode_empty, self.encode_agent, 
+            self.encode_object, self.encode_obstacle, self.encode_target),
+          
         )
-
         self.action_space = gym.spaces.Discrete(4)
         self.action_cnt   = 4
-        self.map          = self.__init_map()
-    
-    def __init_map(self) -> np.ndarray:
-        """
-        Initializes the 2D map of the state with the
-        proper amount of objects on it.
-
-        # Arguments
-        - None
-
-        # Returns
-        - A 2D array representation of the map.
-
-        # Errors
-        - None
-        """
-        # Create an empty 1D map.
-        cells = self.height * self.width
-        map   = np.zeros(shape=cells, dtype=np.uint8)
-
-        # Create the indicies and shuffle them
-        
-        indxs = np.arange(start=0, stop=cells, step=1, dtype=np.uint32)
-        np.random.shuffle(indxs)
-
-        # Place objects, obstacles, targets and agent in this order.
-        map[indxs[:self.obj_cnt]] = self.encode_object
-        indxs = indxs[self.obj_cnt:]
-
-        map[indxs[:self.obs_cnt]] = self.encode_obstacle
-        indxs = indxs[self.obs_cnt:]
-
-        map[indxs[:self.tar_cnt]] = self.encode_target
-        indxs = indxs[self.tar_cnt:]
-
-        map[indxs[0]] = self.encode_agent
-
-        # Return a 2D map
-        return map.reshape((self.height, self.width))
     
     def __reset_needed(self) -> bool:
         """
@@ -134,66 +96,10 @@ class Simulation(gym.Env):
         # Errors
         - None
         """
-        no_targets = len(self.map[self.map == self.encode_target]) == 0
+        no_targets = self.observation_space.get_targets() == 0
         no_steps   = self.step_cnt >= self.max_step 
         return no_targets or no_steps
-    
-    def __return_obs(self) -> np.ndarray:
-        """
-        Returns the observation of the map. For now,
-        the map will be only flattened.
-        
-        # Arguments
-        - None
-
-        # Returns
-        - A flattened version of the map.
-
-        # Errors
-        - None
-        """
-
-        return self.map.flatten()
-    
-    def __step_target(self,dir:int) -> Tuple[Tuple[int,int], bool]:
-        """
-        Finds the target of the step based on the direction. Also,
-        does boundry check on the target coordinate.
-
-        # Arguments
-        - dir:int
-        The direction to move in, it must be 0,1,2,3. 0 is up,
-        1 is right, 2 is down, 3 is left.
-
-        # Returns
-        - The coordinate of the agent and target cells and returns
-        true if the target coordinate is valid.
-
-        # Errors
-        - Throws error if dir is not in 0,1,2,3.
-        """
-
-        if dir not in range(self.action_cnt):
-            raise ValueError(f"The direction must be in {range(self.action_cnt)} but got {dir}.")
-        
-        agent_pos = np.where(self.map == self.encode_agent)
-        x         = agent_pos[0][0]
-        y         = agent_pos[1][0]
-        x_        = x
-        y_        = y
-
-        if dir == 0:
-            x -= 1
-        elif dir == 1:
-            y += 1
-        elif dir == 2:
-            x += 1
-        else:
-            y -= 1
-        
-        in_bound = x >= 0 and y >= 0 and x < self.height and y < self.width
-
-        return ((x_,y_), (x,y), in_bound)
+  
     
     def reset(self) -> np.ndarray:
         """
@@ -210,9 +116,8 @@ class Simulation(gym.Env):
         - None
         """
         self.step_cnt = 0
-        self.map      = self.__init_map()
 
-        return self.__return_obs()
+        return self.observation_space.sample()
     
     def step(self, action : Union[np.ndarray, int]) -> Tuple[np.ndarray, float, bool, Dict[str,Any]]:
         """
@@ -234,27 +139,31 @@ class Simulation(gym.Env):
         - None
         """
         self.step_cnt += 1
-        agent_coor, target_coor, in_bound = self.__step_target(dir=action)
+
+        if action not in range(self.action_cnt):
+            raise ValueError(f"The direction must be in {range(self.action_cnt)} but got {action}.")
+        
+        agent_coor, target_coor, in_bound = self.observation_space.step_target(dir=action)
 
         # What to do when the agent is out of bounds
         if not in_bound:
-            return self.__return_obs(), 0., self.__reset_needed(), {}
+            return self.observation_space.sample(), 0., self.__reset_needed(), {}
         
         # Logic of the steps
-        target_val = self.map[target_coor]
+        target_val = self.observation_space.get_value(c=target_coor)
         reward     = 0.
         if target_val == self.encode_empty:
-            self.map[agent_coor]  = self.encode_empty
-            self.map[target_coor] = self.encode_agent
+            self.observation_space.set_value(c=agent_coor, value=self.encode_empty)
+            self.observation_space.set_value(c=target_coor, value=self.encode_agent)
         elif target_val == self.encode_object:
-            self.map[target_coor] = self.encode_empty
+            self.observation_space.set_value(c=target_coor, value=self.encode_empty)
         elif target_val == self.encode_obstacle:
             pass
         elif target_val == self.encode_target:
-            self.map[target_coor] = self.encode_obstacle
+            self.observation_space.set_value(c=target_coor, value=self.encode_obstacle)
             reward = 1.
         
-        return self.__return_obs(), reward, self.__reset_needed(), {}
+        return self.observation_space.sample(), reward, self.__reset_needed(), {}
 
 
     
