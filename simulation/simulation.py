@@ -116,6 +116,7 @@ class Simulation(gym.Env):
         - None
         """
         self.step_cnt = 0
+        self.observation_space.reset()
 
         return self.observation_space.sample()
     
