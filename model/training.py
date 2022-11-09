@@ -1,4 +1,3 @@
-from distutils.command.config import config
 import os
 import ray
 import torch
@@ -8,7 +7,8 @@ from utils                import Plot
 
 def Training(
     epochs:int, num_workers:int, gpus:int, buffer_size:int, max_step:int,
-    sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int  
+    sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int,
+    continue_from:str=None,  
     ) -> None:
     """
     Trains the agent with the environment.
@@ -29,6 +29,10 @@ def Training(
     -max_step:int
     The number of steps allowed per game.
 
+    -continue_from:str
+    The name of the checkpoint of which we would like to 
+    continue the training. 
+
     -sim_height:int, sim_width:int, sim_objs:int, sim_obs:int, sim_tars:int 
     The settings for the simulation. In order it is the
     height and width of the map, the number of objects,
@@ -46,6 +50,10 @@ def Training(
     # Set the model
     # model = apex_dqn.ApexDQN(env=Simulation, config=config)
     model = ppo.PPO(config=config)
+
+    # Load the model if needed
+    if continue_from:
+        model.restore(checkpoint_path=os.path.join("save", continue_from))
 
     # Set the training loop
     epoch                 = epochs

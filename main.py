@@ -18,6 +18,7 @@ Training(
     sim_obs=10,
     sim_tars=10,
     max_step=100,
+    continue_from="checkpoint_000002"
 )
 
 
